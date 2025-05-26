@@ -6,6 +6,16 @@ def run_nmap(target, output_file="/tmp/penmode-session-nmap.xml"):
     subprocess.run(["nmap", "-A", "-oX", output_file, target], check=True)
     return parse_nmap_xml(output_file)
 
+def run_masscan(target, output_file="/tmp/penmode-session-masscan.json"):
+    subprocess.run(["masscan", target, "--rate=1000", "-oJ", output_file], check=True)
+    with open(output_file, 'r') as f:
+        return json.load(f)
+
+def run_amass(target, output_file="/tmp/penmode-session-amass.json"):
+    subprocess.run(["amass", "enum", "-d", target, "-o", output_file], check=True)
+    with open(output_file, 'r') as f:
+        return json.dumps({"subdomains": f.read().splitlines()}, indent=2)
+
 def parse_nmap_xml(xml_file):
     tree = ET.parse(xml_file)
     root = tree.getroot()
