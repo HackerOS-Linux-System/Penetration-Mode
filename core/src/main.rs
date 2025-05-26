@@ -35,7 +35,8 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
     std::fs::create_dir_all(&session_dir).unwrap();
 
     if let Some(schedule) = &data.schedule {
-        scheduler::schedule_session(&session_id, &data, schedule);
+        // Poprawka: dereferencjonowanie Json<ContainerRequest> przez data.0
+        scheduler::schedule_session(&session_id, &data.0, schedule);
         return HttpResponse::Ok().json(ContainerResponse {
             session_id,
             status: "scheduled".to_string(),
