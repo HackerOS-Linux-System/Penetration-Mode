@@ -1,6 +1,6 @@
 [package]
-name = "penetration-mode-core"
-version = "0.2.0"
+name = "penmode-core"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
@@ -11,4 +11,5 @@ tokio = { version = "1.40", features = ["full"] }
 sysinfo = "0.30"
 rusqlite = { version = "0.31", features = ["bundled"] }
 uuid = { version = "1.10", features = ["v4"] }
-aes-gcm = "0.10" # Szyfrowanie wyników
+aes-gcm = "0.10"
+rand = "0.8" # Losowe nonce dla szyfrowania
