@@ -2,5 +2,20 @@
   "stealth_mode": true,
   "timeout_seconds": 300,
   "default_target": "127.0.0.1",
-  "plugin_repo": "https://github.com/HackerOS-Linux-System/Penetration-Mode/tree/main/python-scripts/plugins"
+  "plugin_repo": "https://raw.githubusercontent.com/HackerOS-Linux-System/Penetration-Mode/main/python-scripts/plugins/",
+  "encryption": {
+    "enabled": true,
+    "key_length": 256,
+    "nonce_length": 12
+  },
+  "auto_scan": {
+    "enabled": true,
+    "interval_minutes": 60,
+    "default_profile": "Network Scan"
+  },
+  "ui": {
+    "theme": "dark",
+    "font_size": 14,
+    "animations": true
+  }
 }
