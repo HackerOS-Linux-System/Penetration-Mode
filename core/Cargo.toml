@@ -1,6 +1,6 @@
 [package]
 name = "penmode-core"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 [dependencies]
@@ -12,4 +12,5 @@ sysinfo = "0.30"
 rusqlite = { version = "0.31", features = ["bundled"] }
 uuid = { version = "1.10", features = ["v4"] }
 aes-gcm = "0.10"
-rand = "0.8" # Losowe nonce dla szyfrowania
+rand = "0.8"
+chrono = "0.4" # Dla planowania sesji
