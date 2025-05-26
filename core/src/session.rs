@@ -1,8 +1,8 @@
 use rusqlite::{Connection, Result};
 
-pub fn init_db(conn: &Connection) {
+pub fn init_db(conn: &Connection) -> Result<()> {
     conn.execute(
-        "CREATE TABLE sessions (
+        "CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY,
             profile TEXT NOT NULL,
             command TEXT NOT NULL,
@@ -11,8 +11,8 @@ pub fn init_db(conn: &Connection) {
             status TEXT NOT NULL
         )",
         (),
-    )
-    .unwrap();
+    )?;
+    Ok(())
 }
 
 pub fn save_session(conn: &Connection, id: &str, profile: &str, command: &str, priority: u8) -> Result<()> {
