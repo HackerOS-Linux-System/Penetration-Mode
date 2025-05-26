@@ -7,6 +7,7 @@ use uuid::Uuid;
 mod podman;
 mod session;
 mod crypto;
+mod resources;
 
 #[derive(Serialize, Deserialize)]
 struct ContainerRequest {
@@ -14,6 +15,7 @@ struct ContainerRequest {
     command: String,
     profile: String,
     use_gpu: bool,
+    priority: u8, // 0 (niski) - 10 (wysoki)
 }
 
 #[derive(Serialize)]
@@ -22,6 +24,7 @@ struct ContainerResponse {
     status: String,
     output: String,
     error: Option<String>,
+    resources: resources::ResourceUsage,
 }
 
 async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
@@ -30,10 +33,19 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
     std::fs::create_dir_all(&session_dir).unwrap();
 
     let mut cmd = Command::new("podman");
-    cmd.args(["run", "--rm", "-it", "--network=host", "-v", &format!("{}:/data", session_dir)]);
+    cmd.args([
+        "run",
+        "--rm",
+        "-it",
+        "--network=host",
+        "-v",
+        &format!("{}:/data", session_dir),
+        "--cpus",
+        &format!("{}", data.priority as f32 / 10.0), // Ograniczenie CPU
+    ]);
 
     if data.use_gpu {
-        cmd.arg("--device=/dev/nvidia0"); // Przykład dla GPU NVIDIA
+        cmd.arg("--device=/dev/nvidia0");
     }
 
     cmd.args([&data.image, "sh", "-c", &data.command]);
@@ -41,7 +53,9 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
     let output = cmd.output();
     let conn = Connection::open_in_memory().unwrap();
     session::init_db(&conn);
-    session::save_session(&conn, &session_id, &data.profile, &data.command);
+    session::save_session(&conn, &session_id, &data.profile, &data.command, data.priority);
+
+    let resources = resources::get_usage();
 
     match output {
         Ok(output) => {
@@ -54,6 +68,7 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
                 status: "success".to_string(),
                 output: encrypted_output,
                 error: if stderr.is_empty() { None } else { Some(stderr) },
+                resources,
             })
         }
         Err(e) => {
@@ -63,9 +78,20 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
                 status: "error".to_string(),
                 output: "".to_string(),
                 error: Some(e.to_string()),
+                resources,
             })
         }
     }
+}
+
+async fn pause_session(session_id: web::Path<String>) -> impl Responder {
+    // Pauzowanie sesji (przykład)
+    let output = Command::new("podman")
+        .args(["pause", &session_id])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+    HttpResponse::Ok().json(serde_json::json!({ "status": "paused", "output": output }))
 }
 
 #[actix_web::main]
@@ -73,6 +99,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .route("/api/container/start", web::post().to(start_container))
+            .route("/api/session/pause/{session_id}", web::get().to(pause_session))
     })
     .bind("127.0.0.1:8080")?
     .run()
