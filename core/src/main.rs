@@ -8,6 +8,7 @@ mod podman;
 mod session;
 mod crypto;
 mod resources;
+mod scheduler;
 
 #[derive(Serialize, Deserialize)]
 struct ContainerRequest {
@@ -15,7 +16,8 @@ struct ContainerRequest {
     command: String,
     profile: String,
     use_gpu: bool,
-    priority: u8, // 0 (niski) - 10 (wysoki)
+    priority: u8,
+    schedule: Option<String>, // ISO 8601, np. "2025-05-26T15:30:00Z"
 }
 
 #[derive(Serialize)]
@@ -32,6 +34,17 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
     let session_dir = format!("/tmp/penmode-session-{}", session_id);
     std::fs::create_dir_all(&session_dir).unwrap();
 
+    if let Some(schedule) = &data.schedule {
+        scheduler::schedule_session(&session_id, &data, schedule);
+        return HttpResponse::Ok().json(ContainerResponse {
+            session_id,
+            status: "scheduled".to_string(),
+            output: "".to_string(),
+            error: None,
+            resources: resources::get_usage(),
+        });
+    }
+
     let mut cmd = Command::new("podman");
     cmd.args([
         "run",
@@ -41,7 +54,9 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
         "-v",
         &format!("{}:/data", session_dir),
         "--cpus",
-        &format!("{}", data.priority as f32 / 10.0), // Ograniczenie CPU
+        &format!("{}", data.priority as f32 / 10.0),
+        "--memory",
+        "512m",
     ]);
 
     if data.use_gpu {
@@ -61,7 +76,7 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
         Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            let encrypted_output = crypto::encrypt_output(&stdout);
+            let encrypted_output = crypto::encrypt_output(&stdout, &session_id);
             podman::cleanup_tmp_session(&session_id);
             HttpResponse::Ok().json(ContainerResponse {
                 session_id,
@@ -85,7 +100,6 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
 }
 
 async fn pause_session(session_id: web::Path<String>) -> impl Responder {
-    // Pauzowanie sesji (przykład)
     let output = Command::new("podman")
         .args(["pause", &session_id])
         .output()
@@ -96,6 +110,7 @@ async fn pause_session(session_id: web::Path<String>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    tokio::spawn(scheduler::run_scheduler());
     HttpServer::new(|| {
         App::new()
             .route("/api/container/start", web::post().to(start_container))
