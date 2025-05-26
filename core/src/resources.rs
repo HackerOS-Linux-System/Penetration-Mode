@@ -13,6 +13,6 @@ pub fn get_usage() -> ResourceUsage {
     let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / system.cpus().len() as f32;
     ResourceUsage {
         cpu: cpu_usage,
-        memory: system.used_memory() / 1024 / 1024, // MB
+        memory: system.used_memory() / 1024 / 1024, // Przeliczenie na MB
     }
 }
