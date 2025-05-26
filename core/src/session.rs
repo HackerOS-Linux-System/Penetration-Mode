@@ -6,17 +6,19 @@ pub fn init_db(conn: &Connection) {
             id TEXT PRIMARY KEY,
             profile TEXT NOT NULL,
             command TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            priority INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT NOT NULL
         )",
         (),
     )
     .unwrap();
 }
 
-pub fn save_session(conn: &Connection, id: &str, profile: &str, command: &str) -> Result<()> {
+pub fn save_session(conn: &Connection, id: &str, profile: &str, command: &str, priority: u8) -> Result<()> {
     conn.execute(
-        "INSERT INTO sessions (id, profile, command) VALUES (?1, ?2, ?3)",
-        (&id, &profile, &command),
+        "INSERT INTO sessions (id, profile, command, priority, status) VALUES (?1, ?2, ?3, ?4, ?5)",
+        (id, profile, command, priority, "Running"),
     )?;
     Ok(())
 }
