@@ -1,0 +1,29 @@
+{
+  "profiles": [
+    {
+      "name": "Network Scan",
+      "image": "kali-linux",
+      "command": "nmap -A {target}",
+      "icon": "mdi-network"
+    },
+    {
+      "name": "Web Exploits",
+      "image": "kali-linux",
+      "command": "sqlmap -u {target}",
+      "icon": "mdi-web"
+    },
+    {
+      "name": "Wi-Fi Crack",
+      "image": "kali-linux",
+      "command": "aircrack-ng -w /data/wordlist.txt {target}",
+      "icon": "mdi-wifi"
+    },
+    {
+      "name": "Password Crack",
+      "image": "gpu-hashcat",
+      "command": "hashcat -m 0 /data/hashes.txt /data/wordlist.txt",
+      "icon": "mdi-lock",
+      "use_gpu": true
+    }
+  ]
+}
