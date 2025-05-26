@@ -2,16 +2,157 @@
 <html>
 <head>
   <title>Penetration Mode</title>
+  <meta charset="UTF-8" />
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@3.7.2/dist/vuetify.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font/css/materialdesignicons.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/editor/editor.main.css" rel="stylesheet" />
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    #output { margin-top: 20px; white-space: pre-wrap; }
+    #terminal, #editor { height: 400px; }
+    .drag-drop { border: 2px dashed #00ff88; padding: 20px; }
   </style>
 </head>
 <body>
-  <h1>Penetration Mode</h1>
-  <button onclick="runContainer()">Run Nmap</button>
-  <pre id="output"></pre>
+  <div id="app">
+    <v-app theme="dark">
+      <v-navigation-drawer>
+        <v-list>
+          <v-list-item title="Dashboard" icon="mdi-view-dashboard" @click="view = 'dashboard'"></v-list-item>
+          <v-list-item title="Profiles" icon="mdi-tools" @click="view = 'profiles'"></v-list-item>
+          <v-list-item title="Plugins" icon="mdi-puzzle" @click="view = 'plugins'"></v-list-item>
+          <v-list-item title="Sessions" icon="mdi-history" @click="view = 'sessions'"></v-list-item>
+        </v-list>
+      </v-navigation-drawer>
+      <v-main>
+        <v-container>
+          <v-row v-if="view === 'dashboard'">
+            <v-col cols="6">
+              <v-card>
+                <v-card-title>Active Sessions</v-card-title>
+                <v-list>
+                  <v-list-item v-for="session in sessions" :key="session.id">
+                    {{ session.profile }} ({{ session.status }})
+                    <v-btn icon="mdi-pause" @click="pauseSession(session.id)"></v-btn>
+                    <v-btn icon="mdi-play" @click="resumeSession(session.id)"></v-btn>
+                  </v-list-item>
+                </v-list>
+              </v-card>
+            </v-col>
+            <v-col cols="6">
+              <v-card>
+                <v-card-title>Resources</v-card-title>
+                <canvas id="resourceChart"></canvas>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-row v-if="view === 'profiles'">
+            <v-col cols="4">
+              <v-card>
+                <v-card-title>Profiles</v-card-title>
+                <v-list>
+                  <v-list-item v-for="profile in profiles" :key="profile.name" @click="selectProfile(profile)">
+                    <v-icon :icon="profile.icon"></v-icon>
+                    {{ profile.name }}
+                  </v-list-item>
+                </v-list>
+              </v-card>
+            </v-col>
+            <v-col cols="8">
+              <v-card>
+                <v-card-title>Console</v-card-title>
+                <div id="terminal"></div>
+                <v-text-field v-model="command" label="Command" @keyup.enter="runCommand" @input="suggestCommand"></v-text-field>
+                <v-btn color="success" @click="runCommand" icon="mdi-play">Run</v-btn>
+                <v-btn color="error" @click="clearOutput" icon="mdi-delete">Clear</v-btn>
+                <v-btn color="info" @click="scheduleSession" icon="mdi-clock">Schedule</v-btn>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-row v-if="view === 'plugins'">
+            <v-col>
+              <v-card>
+                <v-card-title>Plugin Editor</v-card-title>
+                <div id="editor"></div>
+                <div class="drag-drop" @drop="handleDrop" @dragover.prevent>Drop plugin file here</div>
+                <v-btn color="primary" @click="savePlugin">Save Plugin</v-btn>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-row v-if="view === 'sessions'">
+            <v-col>
+              <v-card>
+                <v-card-title>Sessions</v-card-title>
+                <v-table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Profile</th>
+                      <th>Command</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="session in sessions" :key="session.id">
+                      <td>{{ session.id }}</td>
+                      <td>{{ session.profile }}</td>
+                      <td>{{ session.command }}</td>
+                      <td>{{ session.status }}</td>
+                      <td>
+                        <v-btn icon="mdi-pause" @click="pauseSession(session.id)"></v-btn>
+                        <v-btn icon="mdi-play" @click="resumeSession(session.id)"></v-btn>
+                      </td>
+                    </tr>
+                  </tbody>
+                </v-table>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
+              <v-card>
+                <v-card-title>Results</v-card-title>
+                <v-tabs v-model="activeTab">
+                  <v-tab value="table">Table</v-tab>
+                  <v-tab value="chart">Chart</v-tab>
+                </v-tabs>
+                <v-window v-model="activeTab">
+                  <v-window-item value="table">
+                    <v-table>
+                      <thead>
+                        <tr>
+                          <th>IP</th>
+                          <th>Ports</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="item in results" :key="item.ip">
+                          <td>{{ item.ip }}</td>
+                          <td>{{ item.ports }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-window-item>
+                  <v-window-item value="chart">
+                    <canvas id="resultsChart"></canvas>
+                  </v-window-item>
+                </v-window>
+                <v-btn color="info" @click="exportToPDF" icon="mdi-file-pdf">Export PDF</v-btn>
+                <v-btn color="info" @click="exportToCSV" icon="mdi-file-excel">Export CSV</v-btn>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-main>
+    </v-app>
+  </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.38/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@3.7.2/dist/vuetify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/web-links.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
