@@ -4,7 +4,8 @@
       "name": "Network Scan",
       "image": "kali-linux",
       "command": "nmap -A {target}",
-      "icon": "mdi-network"
+      "icon": "mdi-network",
+      "auto": "nmap -A {target}; masscan {target} --rate=1000; amass enum -d {target}"
     },
     {
       "name": "Fast Scan",
@@ -16,7 +17,8 @@
       "name": "Web Exploits",
       "image": "kali-linux",
       "command": "sqlmap -u {target}",
-      "icon": "mdi-web"
+      "icon": "mdi-web",
+      "auto": "gobuster dir -u {target} -w /data/wordlist.txt; sqlmap -u {target}"
     },
     {
       "name": "Wi-Fi Crack",
@@ -42,6 +44,18 @@
       "image": "ad-attack",
       "command": "responder -I eth0 -wrf",
       "icon": "mdi-shield-alert"
+    },
+    {
+      "name": "OSINT",
+      "image": "kali-linux",
+      "command": "theharvester -d {target} -b all",
+      "icon": "mdi-magnify"
+    },
+    {
+      "name": "BloodHound",
+      "image": "ad-attack",
+      "command": "bloodhound-python -u user -p pass -d {target}",
+      "icon": "mdi-graph"
     }
   ]
 }
