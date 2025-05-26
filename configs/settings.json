@@ -2,5 +2,5 @@
   "stealth_mode": true,
   "timeout_seconds": 300,
   "default_target": "127.0.0.1",
-  "plugin_repo": "https://github.com/penmode/plugins"
+  "plugin_repo": "https://github.com/HackerOS-Linux-System/Penetration-Mode/tree/main/python-scripts/plugins"
 }
