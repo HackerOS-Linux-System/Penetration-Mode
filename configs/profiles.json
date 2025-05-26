@@ -7,6 +7,12 @@
       "icon": "mdi-network"
     },
     {
+      "name": "Fast Scan",
+      "image": "kali-linux",
+      "command": "masscan {target} --rate=1000",
+      "icon": "mdi-speedometer"
+    },
+    {
       "name": "Web Exploits",
       "image": "kali-linux",
       "command": "sqlmap -u {target}",
@@ -24,6 +30,18 @@
       "command": "hashcat -m 0 /data/hashes.txt /data/wordlist.txt",
       "icon": "mdi-lock",
       "use_gpu": true
+    },
+    {
+      "name": "AD Attack",
+      "image": "ad-attack",
+      "command": "crackmapexec smb {target}",
+      "icon": "mdi-server"
+    },
+    {
+      "name": "Responder",
+      "image": "ad-attack",
+      "command": "responder -I eth0 -wrf",
+      "icon": "mdi-shield-alert"
     }
   ]
 }
