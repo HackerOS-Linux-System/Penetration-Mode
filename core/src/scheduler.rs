@@ -14,8 +14,9 @@ pub struct ContainerRequest {
 
 pub async fn schedule_session(session_id: &str, request: &ContainerRequest, schedule: &str) {
     let scheduled_time = chrono::DateTime::parse_from_rfc3339(schedule)
-    .unwrap()
-    .with_timezone(&Utc);
+        .map_err(|e| eprintln!("Failed to parse schedule: {}", e))
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(|| Utc::now());
     let now = Utc::now();
     let duration = (scheduled_time - now).num_milliseconds().max(0) as u64;
     sleep(Duration::from_millis(duration)).await;
@@ -31,10 +32,10 @@ pub async fn schedule_session(session_id: &str, request: &ContainerRequest, sche
         "--network=host",
         "-v",
         &format!("{}:/data", session_dir),
-             "--cpus",
-             &format!("{}", request.priority as f32 / 10.0),
-             "--memory",
-             "512m",
+        "--cpus",
+        &format!("{}", request.priority as f32 / 10.0),
+        "--memory",
+        "512m",
     ]);
 
     if request.use_gpu {
@@ -51,6 +52,8 @@ pub async fn schedule_session(session_id: &str, request: &ContainerRequest, sche
 
 pub async fn run_scheduler() {
     loop {
+        println!("Scheduler checking for tasks...");
+        // TODO: Dodaj logikę odczytu zaplanowanych sesji z bazy danych
         sleep(Duration::from_secs(60)).await;
     }
 }
