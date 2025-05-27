@@ -1,5 +1,5 @@
-use aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit, Nonce};
-use base64::engine::general_purpose;
+use aes_gcm::{aead::Aead, AeadCore, Aes256Gcm, Key, KeyInit};
+use base64::{engine::general_purpose, Engine}; // Dodano import traitu Engine
 use rand::rngs::OsRng;
 
 pub fn encrypt_output(data: &str, session_id: &str) -> String {
@@ -14,8 +14,8 @@ pub fn encrypt_output(data: &str, session_id: &str) -> String {
 
     // Szyfrowanie danych
     let ciphertext = cipher
-        .encrypt(&nonce, data.as_bytes())
-        .expect("Szyfrowanie nie powiodło się");
+    .encrypt(&nonce, data.as_bytes())
+    .expect("Szyfrowanie nie powiodło się");
 
     // Łączenie nonce i ciphertext
     let mut result = nonce.to_vec();
