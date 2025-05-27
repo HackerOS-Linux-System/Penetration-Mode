@@ -13,4 +13,9 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 uuid = { version = "1.10", features = ["v4"] }
 aes-gcm = "0.10"
 rand = "0.8"
-chrono = "0.4" # Dla planowania sesji
+chrono = "0.4"
+base64 = "0.22"
+druid = { version = "0.8", features = ["im"] } # Dla GUI
+reqwest = { version = "0.11", features = ["json"] } # Dla żądań HTTP
+env_logger = "0.11" # Dla logowania
+log = "0.4"
