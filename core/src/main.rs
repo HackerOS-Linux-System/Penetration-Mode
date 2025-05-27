@@ -1,7 +1,6 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
-use std::process::Command;
+use serde::Serialize;
 use uuid::Uuid;
 
 mod podman;
@@ -10,15 +9,7 @@ mod crypto;
 mod resources;
 mod scheduler;
 
-#[derive(Serialize, Deserialize)]
-struct ContainerRequest {
-    image: String,
-    command: String,
-    profile: String,
-    use_gpu: bool,
-    priority: u8,
-    schedule: Option<String>, // ISO 8601, np. "2025-05-26T15:30:00Z"
-}
+use scheduler::ContainerRequest; // Używamy ContainerRequest z modułu scheduler
 
 #[derive(Serialize)]
 struct ContainerResponse {
@@ -35,18 +26,18 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
     std::fs::create_dir_all(&session_dir).unwrap();
 
     if let Some(schedule) = &data.schedule {
-        // Poprawka: dereferencjonowanie Json<ContainerRequest> przez data.0
-        scheduler::schedule_session(&session_id, &data.0, schedule);
+        // Używamy data.0, aby dereferencjonować web::Json<ContainerRequest>
+        scheduler::schedule_session(&session_id, &data.0, schedule).await; // Dodano .await, ponieważ schedule_session jest asynchroniczna
         return HttpResponse::Ok().json(ContainerResponse {
             session_id,
             status: "scheduled".to_string(),
-            output: "".to_string(),
-            error: None,
-            resources: resources::get_usage(),
+                                       output: "".to_string(),
+                                       error: None,
+                                       resources: resources::get_usage(),
         });
     }
 
-    let mut cmd = Command::new("podman");
+    let mut cmd = std::process::Command::new("podman"); // Pełna ścieżka zamiast importu
     cmd.args([
         "run",
         "--rm",
@@ -54,10 +45,10 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
         "--network=host",
         "-v",
         &format!("{}:/data", session_dir),
-        "--cpus",
-        &format!("{}", data.priority as f32 / 10.0),
-        "--memory",
-        "512m",
+             "--cpus",
+             &format!("{}", data.priority as f32 / 10.0),
+             "--memory",
+             "512m",
     ]);
 
     if data.use_gpu {
@@ -82,9 +73,9 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
             HttpResponse::Ok().json(ContainerResponse {
                 session_id,
                 status: "success".to_string(),
-                output: encrypted_output,
-                error: if stderr.is_empty() { None } else { Some(stderr) },
-                resources,
+                                    output: encrypted_output,
+                                    error: if stderr.is_empty() { None } else { Some(stderr) },
+                                    resources,
             })
         }
         Err(e) => {
@@ -92,20 +83,20 @@ async fn start_container(data: web::Json<ContainerRequest>) -> impl Responder {
             HttpResponse::InternalServerError().json(ContainerResponse {
                 session_id,
                 status: "error".to_string(),
-                output: "".to_string(),
-                error: Some(e.to_string()),
-                resources,
+                                                     output: "".to_string(),
+                                                     error: Some(e.to_string()),
+                                                     resources,
             })
         }
     }
 }
 
 async fn pause_session(session_id: web::Path<String>) -> impl Responder {
-    let output = Command::new("podman")
-        .args(["pause", &session_id])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
-        .unwrap_or_default();
+    let output = std::process::Command::new("podman") // Pełna ścieżka zamiast importu
+    .args(["pause", &session_id])
+    .output()
+    .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+    .unwrap_or_default();
     HttpResponse::Ok().json(serde_json::json!({ "status": "paused", "output": output }))
 }
 
@@ -114,8 +105,8 @@ async fn main() -> std::io::Result<()> {
     tokio::spawn(scheduler::run_scheduler());
     HttpServer::new(|| {
         App::new()
-            .route("/api/container/start", web::post().to(start_container))
-            .route("/api/session/pause/{session_id}", web::get().to(pause_session))
+        .route("/api/container/start", web::post().to(start_container))
+        .route("/api/session/pause/{session_id}", web::get().to(pause_session))
     })
     .bind("127.0.0.1:8080")?
     .run()
