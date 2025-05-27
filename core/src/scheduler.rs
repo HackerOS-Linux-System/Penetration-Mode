@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use std::process::Command;
 use tokio::time::{sleep, Duration};
 
 #[derive(Deserialize)]
@@ -14,7 +13,9 @@ pub struct ContainerRequest {
 }
 
 pub async fn schedule_session(session_id: &str, request: &ContainerRequest, schedule: &str) {
-    let scheduled_time = DateTime adher::parse_from_rfc3339(schedule).unwrap().with_timezone(&Utc);
+    let scheduled_time = chrono::DateTime::parse_from_rfc3339(schedule)
+    .unwrap()
+    .with_timezone(&Utc);
     let now = Utc::now();
     let duration = (scheduled_time - now).num_milliseconds().max(0) as u64;
     sleep(Duration::from_millis(duration)).await;
@@ -22,7 +23,7 @@ pub async fn schedule_session(session_id: &str, request: &ContainerRequest, sche
     let session_dir = format!("/tmp/penmode-session-{}", session_id);
     std::fs::create_dir_all(&session_dir).unwrap();
 
-    let mut cmd = Command::new("podman");
+    let mut cmd = std::process::Command::new("podman");
     cmd.args([
         "run",
         "--rm",
@@ -30,10 +31,10 @@ pub async fn schedule_session(session_id: &str, request: &ContainerRequest, sche
         "--network=host",
         "-v",
         &format!("{}:/data", session_dir),
-        "--cpus",
-        &format!("{}", request.priority as f32 / 10.0),
-        "--memory",
-        "512m",
+             "--cpus",
+             &format!("{}", request.priority as f32 / 10.0),
+             "--memory",
+             "512m",
     ]);
 
     if request.use_gpu {
@@ -42,12 +43,14 @@ pub async fn schedule_session(session_id: &str, request: &ContainerRequest, sche
 
     cmd.args([&request.image, "sh", "-c", &request.command]);
 
-    cmd.spawn().ok();
+    match cmd.spawn() {
+        Ok(_) => println!("Successfully spawned podman command for session {}", session_id),
+        Err(e) => eprintln!("Failed to spawn podman command for session {}: {}", session_id, e),
+    }
 }
 
 pub async fn run_scheduler() {
     loop {
-        // Logika sprawdzania zaplanowanych sesji
         sleep(Duration::from_secs(60)).await;
     }
 }
