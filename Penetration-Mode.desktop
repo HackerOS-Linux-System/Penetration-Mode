@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Penetration Mode
+Exec=python3 /path/to/penetration-mode/gui/main.py
+Type=Application
+Icon=/path/to/penetration-mode/assets/icon.png
+Terminal=false
+Categories=Security;Utility;
+StartupNotify=true
