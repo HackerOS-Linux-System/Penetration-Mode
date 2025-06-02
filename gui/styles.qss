@@ -1,0 +1,35 @@
+QMainWindow {
+    background-color: #1e1e1e;
+}
+
+QPushButton {
+    background-color: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #555555;
+    padding: 10px;
+    font-size: 14px;
+}
+
+QPushButton:hover {
+    background-color: #3a3a3a;
+}
+
+QTabWidget::pane {
+    border: 1px solid #555555;
+    background: #252525;
+}
+
+QTabBar::tab {
+    background: #2a2a2a;
+    color: #ffffff;
+    padding: 10px;
+}
+
+QTabBar::tab:selected {
+    background: #3a3a3a;
+}
+
+QLabel {
+    color: #ffffff;
+    font-size: 12px;
+}
