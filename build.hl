@@ -1,7 +1,10 @@
 // python3.13
-// nuitka
+// ccache
 
 > cd source-code
+> python3.13 -m venv venv
+> source venv/bin/activate
+> pip install nuitka zstandard pyqt6
 > nuitka --standalone --onefile \
        --enable-plugin=pyqt6 \
        --include-data-file=/usr/share/HackerOS/ICONS/Penetration-Mode.png=. \
