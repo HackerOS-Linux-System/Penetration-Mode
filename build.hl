@@ -1,13 +1,13 @@
-// python3.13
-// ccache
+// cmake
+// make
+// golang
 
 > cd source-code
-> python3.13 -m venv venv
-> source venv/bin/activate
-> pip install nuitka zstandard pyqt6
-> nuitka --standalone --onefile \
-       --enable-plugin=pyqt6 \
-       --include-data-file=/usr/share/HackerOS/ICONS/Penetration-Mode.png=. \
-       --output-dir=build \
-       --remove-output \
-       main.py.py
+> cd backend
+> go build
+> cd ..
+> cd main
+> mkdir build
+> cd build
+> cmake ..
+> make
