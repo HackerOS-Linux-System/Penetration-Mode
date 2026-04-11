@@ -1,3 +1,5 @@
 // curl
 
+> sudo curl -L https://raw.githubusercontent.com/HackerOS-Linux-System/Penetration-Mode/main/Penetration-Mode.desktop -o /usr/share/applications/Penetration-Mode.desktop
+>
 >
