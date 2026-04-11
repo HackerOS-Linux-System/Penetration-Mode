@@ -2,4 +2,9 @@
 // nuitka
 
 > cd source-code
-> python3.13 nuitka
+> nuitka --standalone --onefile \
+       --enable-plugin=pyqt6 \
+       --include-data-file=/usr/share/HackerOS/ICONS/Penetration-Mode.png=. \
+       --output-dir=build \
+       --remove-output \
+       main.py.py
