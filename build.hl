@@ -1,0 +1,5 @@
+// python3.13
+// nuitka
+
+> cd source-code
+> python3.13 nuitka
