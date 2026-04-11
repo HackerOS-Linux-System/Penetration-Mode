@@ -1,1 +1,2 @@
 > sudo rm -rf /usr/lib/HackerOS/Penetration-Mode/
+> sudo rm -rf /usr/share/applications/Penetration-Mode.desktop
