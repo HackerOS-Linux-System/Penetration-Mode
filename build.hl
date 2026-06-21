@@ -1,13 +1,6 @@
-// cmake
-// make
-// golang
+// rustc
+// cargo
+// h#
+// bytes
 
-> cd source-code
-> cd backend
-> go build
-> cd ..
-> cd main
-> mkdir build
-> cd build
-> cmake ..
-> make
+> bytes build --release
