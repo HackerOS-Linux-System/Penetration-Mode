@@ -1,0 +1,11 @@
+[package]
+name = "penetration-mode-ipc"
+version = "0.1.0"
+edition = "2021"
+description = "Vendored copy of comphwde's penetration-mode/ reference crate (the client side of the --extern-penetration-mode protocol), now actually wired into penetration-mode-session instead of just sitting as workspace-local documentation over in comphwde's own repository. Keep in sync by hand with that crate when the protocol changes, same as sde-ipc/ next to this one."
+license = "GPL-3.0"
+
+[dependencies]
+sde-ipc = { path = "../sde-ipc" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
