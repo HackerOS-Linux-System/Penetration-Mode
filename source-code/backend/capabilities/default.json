@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Domyślne uprawnienia głównego okna aplikacji Penetration Mode.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "process:default",
+    "process:allow-exit",
+    "os:default",
+    "updater:default"
+  ]
+}
