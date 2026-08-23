@@ -1,8 +1,8 @@
 [Desktop Entry]
-Type=Application
 Name=Penetration Mode
-Comment=Cybersecurity app for HackerOS Cybersecurity
-Exec=/usr/lib/HackerOS/Penetration-Mode/penetration-mode
+Comment=Red Team workspace — uruchamia się jako zwykła aplikacja na bieżącym pulpicie
+Exec=/usr/bin/penetration-mode app
 Icon=/usr/share/HackerOS/ICONS/Penetration-Mode.png
 Terminal=false
-Categories=System;Security;Network;
+Type=Application
+Categories=Security;System;
