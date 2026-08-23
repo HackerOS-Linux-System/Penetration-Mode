@@ -1,0 +1,27 @@
+[package]
+name = "penetration-mode-session"
+version = "0.1.0"
+edition = "2021"
+description = "Session launcher for Penetration Mode - decides whether to hand off to `comphwde --extern-penetration-mode` (bare-tty / full-session mode) or to launch the Tauri shell directly as an ordinary nested app (`penetration-mode app` / `--other`). Analogous to Hacker Mode's `hacker-mode-session` launcher (see comphwde's main.rs module doc). NOT the GUI app itself - that's `source-code/backend` (the Tauri binary); this binary's only job is picking how that binary (or comphwde, hosting it) gets started."
+license = "BSD-3-Clause"
+
+[[bin]]
+name = "penetration-mode"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+# Vendored copy of comphwde's sde-ipc protocol — see
+# vendor/sde-ipc/Cargo.toml's description for why it's vendored rather
+# than a path dependency straight into the comphwde repository. This is
+# the only IPC crate main.rs actually depends on today: it talks to
+# comphwde generically (same window-lifecycle code for both the
+# `penetration-mode` and `other` extern names), so it doesn't need
+# `penetration-mode-ipc`'s `penetration-mode`-specific convenience
+# wrappers (`launch_shell`/`find_shell_window`/`enter_wrapper`/...) —
+# that crate is still vendored in `vendor/penetration-mode-ipc` and
+# listed in the workspace root, ready for whenever a BlackArch-store-tool
+# "wrapper mode" (see that crate's own module doc) gets built on top of
+# this launcher, but isn't pulled in here until something actually calls it.
+sde-ipc = { path = "vendor/sde-ipc" }
