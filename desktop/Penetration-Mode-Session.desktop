@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Penetration Mode
+Comment=HackerOS Red Team workspace (comphwde --extern-penetration-mode)
+Exec=penetration-mode
+Type=Application
+DesktopNames=penetration-mode
