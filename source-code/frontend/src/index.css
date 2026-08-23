@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+[data-theme="dark"] {
+  /* Domyślny kolor akcentu (czerwień red-team) i jego warianty
+     przezroczystości — patrz lib/accent.ts, które nadpisuje te wartości
+     w runtime na podstawie ustawień operatora (Settings.tsx). Ustawione
+     tu jako fallback, żeby UI nie "mrugnęło" bez koloru przed pierwszym
+     odczytem ustawień z backendu. */
+  --accent: #ff3333;
+  --accent-rgb: 255, 51, 51;
+  --accent-10: rgba(255, 51, 51, 0.1);
+  --accent-15: rgba(255, 51, 51, 0.15);
+  --accent-20: rgba(255, 51, 51, 0.2);
+  --accent-30: rgba(255, 51, 51, 0.3);
+  --accent-40: rgba(255, 51, 51, 0.4);
+  --accent-50: rgba(255, 51, 51, 0.5);
+  --accent-60: rgba(255, 51, 51, 0.6);
+
+  /* Tokeny motywu — Runda 8. Ciemny (domyślny, dotychczasowy jedyny
+     motyw appki) i jasny (niżej, `[data-theme="light"]`) używają tych
+     samych nazw zmiennych; komponenty odwołują się wyłącznie do nazw,
+     nigdy do konkretnego hexa, więc `lib/theme.ts` może przełączać cały
+     UI zmianą jednego atrybutu na <html>. Wyjątek: xterm.js (canvas) nie
+     czyta zmiennych CSS — patrz `TERMINAL_THEMES`/`LOGS_TERMINAL_THEMES`
+     w lib/theme.ts, osobny, równoległy zestaw literałów dla terminali. */
+  --bg-app: #050505;
+  --bg-surface: #111111;
+  --bg-surface-alt: #0c0c0c;
+  --bg-surface-raised: #181818;
+  --bg-inset: #080808;
+  --bg-app-95: rgba(5, 5, 5, 0.95);
+  --bg-surface-raised-80: rgba(15, 15, 15, 0.8);
+  --bg-surface-90: rgba(17, 17, 17, 0.9);
+
+  --border-default: #222222;
+  --border-strong: #333333;
+
+  --text-primary: #e0e0e0;
+  --text-secondary: #999999;
+  --text-tertiary: #888888;
+  --text-muted: #666666;
+  --text-faint: #555555;
+  --text-disabled: #444444;
+}
+
+[data-theme="light"] {
+  --bg-app: #f2f3f5;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #eef0f3;
+  --bg-surface-raised: #e8eaed;
+  --bg-inset: #f4f5f7;
+  --bg-app-95: rgba(242, 243, 245, 0.95);
+  --bg-surface-raised-80: rgba(232, 234, 237, 0.8);
+  --bg-surface-90: rgba(255, 255, 255, 0.9);
+
+  --border-default: #d9dbdf;
+  --border-strong: #c2c5cb;
+
+  --text-primary: #16181c;
+  --text-secondary: #4a4e56;
+  --text-tertiary: #62666e;
+  --text-muted: #7c8089;
+  --text-faint: #94979f;
+  --text-disabled: #b3b6bd;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-app);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+@keyframes scan-sweep {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-scan-sweep {
+  animation: scan-sweep 2.5s linear infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* xterm.js (Terminal.tsx / LogsTerminal.tsx) — dopasowanie do reszty UI:
+   usuwa biały outline focusu z domyślnego motywu i pozwala kontenerowi
+   .xterm wypełnić rodzica zamiast trzymać się swojego natywnego rozmiaru. */
+.xterm {
+  height: 100%;
+}
+.xterm .xterm-viewport {
+  background-color: transparent !important;
+}
+.xterm:focus,
+.xterm .xterm-helper-textarea {
+  outline: none !important;
+}
