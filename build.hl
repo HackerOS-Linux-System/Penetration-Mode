@@ -1,6 +1,162 @@
-// rustc
+#!/usr/bin/hl
 // cargo
-// h#
-// bytes
+// rustc
 
-> bytes build --release
+;; > sudo apt install -y pkg-config libfontconfig1-dev
+;; > sudo apt install -y libssl-dev
+;; > sudo apt install -y libudev-dev
+;; > sudo apt install -y libseat-dev
+;; install dependences ^^^^
+
+using <gen 2>
+
+# <main/colors>
+
+% FRONTEND: str = source-code/frontend
+% BACKEND: str  = source-code/backend
+
+: log def
+    ~> [make.hl] @msg
+done
+
+: help def
+    ~> Penetration Mode — dostępne cele:
+    ~>   install     - npm install dla frontendu
+    ~>   dev         - uruchamia aplikację w trybie deweloperskim (Tauri + Vite)
+    ~>   build       - buduje release'owy binarz (bundle) aplikacji
+    ~>   test        - testy: cargo test (parsery pacmana) + vitest (frontend)
+    ~>   lint        - tsc --noEmit + cargo check
+    ~>   fmt         - formatowanie (prettier / rustfmt)
+    ~>   icons       - regeneruje ikony aplikacji z source-code/backend/icons/icon.png
+    ~>   clean       - czyści artefakty builda (dist/, target/)
+    ~>   tauri-info  - tauri info
+    ~>
+    ~> UWAGA: 'tauri' (CLI) zawsze musi być odpalane z katalogu source-code/backend/,
+    ~> bo tam leży tauri.conf.json + Cargo.toml — CLI szuka configu tylko w
+    ~> podkatalogach bieżącego katalogu, nie u 'rodzeństwa'. Dlatego skrypt npm
+    ~> 'tauri' w source-code/frontend/package.json robi 'cd ../backend && tauri'
+    ~> zanim odpali binarkę — nie usuwaj tego cd.
+done
+
+: install def
+    -- log
+    ~> npm install (frontend)...
+    > cd @FRONTEND && npm install
+    ? err
+        ::red install failed
+        > exit 1
+    done
+    ::green install OK
+done
+
+: dev def
+    -- log
+    ~> Starting Tauri + Vite (dev)...
+    > cd @FRONTEND && npm run tauri dev
+done
+
+: build def
+    -- log
+    ~> Building release bundle...
+    > cd @FRONTEND && npm run tauri build
+    ? err
+        ::red build failed
+        > exit 1
+    done
+    ::green build OK
+done
+
+: test def
+    -- log
+    ~> Running tests...
+    > cd @BACKEND && cargo test
+    > cd @FRONTEND && npm run test
+    ? err
+        ::red tests failed
+        > exit 1
+    done
+    ::green tests OK
+done
+
+: lint def
+    -- log
+    ~> Linting...
+    > cd @FRONTEND && npx tsc --noEmit
+    > cd @BACKEND && cargo check
+    ? err
+        ::red lint failed
+        > exit 1
+    done
+    ::green lint OK
+done
+
+: fmt def
+    -- log
+    ~> Formatting...
+    > cd @FRONTEND && npx prettier -w src
+    > cd @BACKEND && cargo fmt
+    ? err
+        ::red fmt failed
+        > exit 1
+    done
+    ::green fmt OK
+done
+
+: icons def
+    -- log
+    ~> Regenerating icons...
+    > cd @FRONTEND && npm run tauri -- icon icons/icon.png
+    ? err
+        ::red icons failed
+        > exit 1
+    done
+    ::green icons OK
+done
+
+: clean def
+    -- log
+    ~> Cleaning artifacts...
+    > rm -rf @FRONTEND/dist @FRONTEND/node_modules
+    > rm -rf @BACKEND/target
+    ::green clean done
+done
+
+: tauri-info def
+    -- log
+    ~> tauri info...
+    > cd @FRONTEND && npm run tauri info
+done
+
+;; === Dispatcher ===
+% target: str = help
+
+? @argc > 0
+    % target = @arg0
+done
+
+? switch @target
+| help
+    -- help
+| install
+    -- install
+| dev
+    -- dev
+| build
+    -- build
+| test
+    -- test
+| lint
+    -- lint
+| fmt
+    -- fmt
+| icons
+    -- icons
+| clean
+    -- clean
+| tauri-info
+    -- tauri-info
+| *
+    ::red Unknown target: @target
+    -- help
+    > exit 1
+done
