@@ -1,2 +1,2 @@
-> sudo rm -rf /usr/lib/HackerOS/Penetration-Mode/
-> sudo rm -rf /usr/share/applications/Penetration-Mode.desktop
+^> rm -rf /usr/bin/penetration-mode
+^> rm -rf /ust/share/wayland-sessions/Penetration-Mode.desktop
