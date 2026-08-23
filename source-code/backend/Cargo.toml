@@ -1,1 +1,75 @@
+[package]
+name = "penetration-mode"
+version = "0.2.0"
+description = "Penetration Mode // Red Team workspace shell"
+authors = ["HackerOS Team <hackeros068@gmail.com>"]
+edition = "2021"
+rust-version = "1.77"
 
+[lib]
+name = "penetration_mode_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+# Nazwany jawnie (zamiast domyślnej nazwy binarza = nazwa pakietu,
+# "penetration-mode") żeby nie kolidować z session/'s `penetration-mode`
+# — TO session/ jest teraz komendą, którą wpisuje operator/display manager;
+# ta binarka jest tym, co session/ uruchamia jako klienta (patrz
+# session/src/main.rs's `SHELL_BIN`). `tauri.conf.json`'s `mainBinaryName`
+# musi się z tym zgadzać — patrz komentarz tam.
+[[bin]]
+name = "penetration-mode-shell"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-process = "2"
+tauri-plugin-os = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Shared Store types (Category/Package/Allowlist/ProgressEvent), single
+# source of truth for both this crate and the generated frontend
+# TypeScript types — see ../../ipc/src/lib.rs.
+penetration-mode-ipc-types = { path = "../../ipc" }
+
+# Terminal — prawdziwy PTY podłączony do `podman exec` (patrz src/pty.rs)
+portable-pty = "0.8"
+
+# Audit log / sesje operatora
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Łańcuch HMAC-SHA256 dla audit.jsonl (patrz src/audit.rs) — wykrywa
+# ręczną edycję/usunięcie wpisów po fakcie.
+hmac = "0.12"
+sha2 = "0.10"
+
+# Klient HTTP dla threat feedu (patrz src/threat_feed.rs) — `rustls-tls`
+# zamiast domyślnego `native-tls`, żeby budowanie appki nie wymagało
+# nagłówków systemowego OpenSSL na maszynie budującej (rustls jest czystym
+# Rustem, kompilowanym ze źródeł jak reszta zależności).
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+
+# Auth operatora przez systemowy PAM (patrz src/auth.rs) — weryfikuje
+# prawdziwych użytkowników systemowych (/etc/passwd + PAM, w tym LDAP/SSSD,
+# jeśli host ma to skonfigurowane), zamiast własnej bazy loginów.
+# Wymaga nagłówków PAM w systemie budującym (libpam0g-dev / pam-devel / pam).
+pam = "0.7"
+
+# Współdzielony stan w komendach Tauri (sesja, uchwyt PTY, konfiguracja)
+once_cell = "1"
+
+# Standardowe katalogi konfiguracyjne/danych appki (allowlist.json, audit.jsonl)
+dirs = "5"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
