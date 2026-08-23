@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+members = [
+    # Session launcher — `penetration-mode` / `penetration-mode app`
+    # (patrz session/src/main.rs). Osobny mały binarz uruchamiany PRZED
+    # powłoką, nie zależny od Tauri/GTK/webview.
+    "session",
+    # Vendored copy of comphwde's sde-ipc protocol that session/ depends on
+    # (see session/vendor/sde-ipc/Cargo.toml's description for why it's a
+    # vendored copy rather than a path/git dependency on the comphwde
+    # repo). Listed explicitly rather than relying on Cargo's implicit
+    # workspace inclusion, so `cargo test --workspace` from this repo's
+    # root always covers it too.
+    "session/vendor/sde-ipc",
+    # Vendored copy of comphwde's penetration-mode/ reference IPC crate —
+    # session/'s actual client for the --extern-penetration-mode
+    # protocol (Ping/LaunchApp/ListWindows/Shutdown). See its Cargo.toml
+    # description.
+    "session/vendor/penetration-mode-ipc",
+    # Powłoka GUI (Tauri + Solid.js frontend, ta sama appka co zawsze) —
+    # dodana do workspace żeby `cargo build --workspace`/`cargo test
+    # --workspace` z katalogu root faktycznie obejmowały całość, nie tylko
+    # session/. `make build`/`make dev` (Makefile) nadal są zalecaną drogą
+    # do budowania samej powłoki, bo to one odpalają `tauri build`/`tauri
+    # dev`, które node'owy frontend potrzebuje — samo `cargo build -p
+    # penetration-mode` zbuduje tylko stronę Rust bez zbudowanego
+    # `frontend/dist`.
+    "source-code/backend",
+    # Shared Rust<->TypeScript types for Store commands — see its own
+    # Cargo.toml description.
+    "ipc",
+]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
