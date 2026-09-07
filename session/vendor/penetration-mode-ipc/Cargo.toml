@@ -1,0 +1,11 @@
+[package]
+name = "penetration-mode-ipc"
+version = "0.2.0"
+edition = "2021"
+description = "Vendored, self-contained client for the --extern-penetration-mode wire protocol served by hackeros-comp's src/ipc/extern_ipc.rs. Contains its own copy of the protocol (src/protocol.rs) rather than depending on a separate 'sde'/'sde-ipc' crate - there is no such crate in this repository, or in hackeros-comp's own workspace (see hackeros-comp's src/ipc/protocol.rs module doc): the protocol is small and stable enough that a hand-kept-in-sync copy per client is simpler than a shared crate shared across two independently-released repositories. This crate is session/'s actual dependency (see session/Cargo.toml); it also mirrors hackeros-comp's own workspace-local 'penetration-mode' reference crate byte-for-byte in its protocol.rs, which is what keeps the two repositories honest about wire compatibility."
+license = "BSD-3-Clause"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
