@@ -1,1 +1,276 @@
+name: build
 
+# Mirrors build.hl's targets (lint / test / build) as CI, plus the parts
+# build.hl doesn't cover: building session/ (the launcher binary that
+# actually gets installed as /usr/bin/penetration-mode — see
+# session/src/main.rs's module doc) and publishing both it and the Tauri
+# bundle to a GitHub Release on version tags.
+#
+# Linux-only, deliberately: source-code/backend depends on the `pam`
+# crate (real PAM auth against system accounts — src/auth.rs) and
+# `portable-pty` wired to `podman exec` (src/pty.rs), neither of which is
+# meaningfully buildable — let alone useful — on Windows/macOS. Penetration
+# Mode only ever ships as part of HackerOS, a Linux distribution; there is
+# no cross-platform build to produce here.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  CARGO_TERM_COLOR: always
+  # Keep PRs/every-push CI fast; full LTO+strip release profile (see the
+  # root Cargo.toml's [profile.release]) is still used for tagged builds
+  # further down, where the extra link time is worth it.
+  RUST_BACKTRACE: 1
+
+# Two builds queued for the same ref (e.g. a rapid force-push) is wasted
+# CI time; a tag build should never be cancelled by a later branch push
+# though, hence the guard on `refs/tags/`.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  # ── Lint ──────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (tsc + cargo check)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev libpam0g-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: source-code/frontend/package-lock.json
+
+      - name: npm ci (frontend)
+        working-directory: source-code/frontend
+        run: npm ci
+
+      - name: tsc --noEmit
+        working-directory: source-code/frontend
+        run: npx tsc --noEmit
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            session -> target
+
+      # `cargo check --workspace` from the repo root covers session/,
+      # session/vendor/penetration-mode-ipc, source-code/backend and ipc/
+      # in one pass (see the root Cargo.toml's `members`) — frontendDist
+      # isn't built yet at this point, which is fine: `cargo check` never
+      # needs it (only `tauri build`'s beforeBuildCommand does).
+      - name: cargo check --workspace
+        run: cargo check --workspace --all-targets
+
+      - name: cargo clippy --workspace
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  # ── Test ──────────────────────────────────────────────────────────────
+  test:
+    name: Test (vitest + cargo test)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev libpam0g-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: source-code/frontend/package-lock.json
+
+      - name: npm ci (frontend)
+        working-directory: source-code/frontend
+        run: npm ci
+
+      - name: vitest run
+        working-directory: source-code/frontend
+        run: npm run test
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            session -> target
+
+      # `cargo test --workspace` (not just `-p penetration-mode-session
+      # -p penetration-mode-ipc`): source-code/backend's own unit tests
+      # (pacman/BlackArch-store parsers, audit-log HMAC chain, etc.) run
+      # here too. Anything in there that genuinely needs a live PAM
+      # service or a running podman daemon is expected to skip itself in
+      # that case, same as it would on a contributor's machine without
+      # either set up — not this workflow's job to provision either.
+      - name: cargo test --workspace
+        run: cargo test --workspace
+
+  # ── Build: session launcher ─────────────────────────────────────────
+  build-session:
+    name: Build session launcher (linux-x86_64)
+    needs: [lint, test]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: session -> target
+
+      # Only session/ + its one vendored dependency — deliberately not
+      # `--workspace`, so this job doesn't need webkit2gtk/pam/etc. at
+      # all (see session/Cargo.toml's own dependency list: anyhow + clap
+      # + penetration-mode-ipc, nothing else). Produces the single
+      # `/usr/bin/penetration-mode` binary — see session/src/main.rs's
+      # module doc for what it does at runtime.
+      - name: cargo build --release
+        run: cargo build --release -p penetration-mode-session
+
+      - name: Stage artifact
+        run: |
+          mkdir -p dist/session
+          cp target/release/penetration-mode dist/session/
+          cp desktop/Penetration-Mode.desktop desktop/Penetration-Mode-Session.desktop dist/session/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: penetration-mode-session-linux-x86_64
+          path: dist/session
+          if-no-files-found: error
+
+  # ── Build: Tauri app bundle ──────────────────────────────────────────
+  build-app:
+    name: Build Tauri app bundle (linux-x86_64)
+    needs: [lint, test]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        # Standard tauri-action Linux prerequisites, plus libpam0g-dev
+        # for source-code/backend's own `pam` dependency (not part of
+        # Tauri's own requirements — see that crate's Cargo.toml comment
+        # on src/auth.rs) and patchelf, which the AppImage bundler shells
+        # out to.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev libpam0g-dev \
+            build-essential curl wget file patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: source-code/frontend/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: source-code/backend -> target
+
+      - name: npm ci (frontend)
+        working-directory: source-code/frontend
+        run: npm ci
+
+      # tauri-action is run from source-code/frontend, matching the
+      # `"tauri": "cd ../backend && tauri"` indirection package.json
+      # already relies on for local dev (see build.hl's comment on why
+      # that `cd` exists — tauri.conf.json/Cargo.toml live in
+      # ../backend, not here). `tagName`/`releaseName` etc. are only
+      # honored when `github.ref` is a tag; on a plain branch push this
+      # just builds and skips the release step entirely.
+      - name: tauri build
+        id: tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Only set if you've configured `plugins.updater` in
+          # tauri.conf.json for real (it currently has a placeholder
+          # endpoint/pubkey — see that file) — leave the two secrets
+          # unset until then; tauri-action skips updater-artifact
+          # signing when they're absent.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: source-code/frontend
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Penetration Mode {0}', github.ref_name) || '' }}
+          releaseDraft: true
+          prerelease: false
+          # Publishing happens in `build-session`'s upload step too, on
+          # the same tag — tauri-action creates/updates the draft release
+          # first, `gh release upload` in `publish-session-asset` below
+          # then attaches the launcher binary to that same release.
+          includeUpdaterJson: false
+
+      - name: Upload bundle artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: penetration-mode-app-linux-x86_64
+          path: |
+            source-code/backend/target/release/bundle/deb/*.deb
+            source-code/backend/target/release/bundle/rpm/*.rpm
+            source-code/backend/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: warn
+
+  # ── Publish: attach the session launcher to the same tagged release ──
+  # tauri-action (build-app) already created the draft GitHub Release and
+  # uploaded the app bundle to it when this run was triggered by a tag
+  # push; this job just adds the session launcher tarball alongside it,
+  # so a release has everything needed to install Penetration Mode
+  # (`penetration-mode-shell` from the bundle + `penetration-mode` +
+  # both .desktop files from here) in one place.
+  publish-session-asset:
+    name: Attach session launcher to release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-session, build-app]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download session artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: penetration-mode-session-linux-x86_64
+          path: dist/session
+
+      - name: Package tarball
+        run: |
+          chmod +x dist/session/penetration-mode
+          tar -C dist/session -czf penetration-mode-session-linux-x86_64.tar.gz .
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            penetration-mode-session-linux-x86_64.tar.gz \
+            --repo "${{ github.repository }}" \
+            --clobber
